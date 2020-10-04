@@ -1,13 +1,10 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chewie/chewie.dart';
-import 'package:chewie_audio/chewie_audio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_html/src/utils.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -23,17 +20,11 @@ import 'package:html/dom.dart' as dom;
 abstract class ReplacedElement extends StyledElement {
   PlaceholderAlignment alignment;
 
-  ReplacedElement(
-      {String name,
-      Style style,
-      dom.Element node,
-      this.alignment = PlaceholderAlignment.aboveBaseline})
+  ReplacedElement({String name, Style style, dom.Element node, this.alignment = PlaceholderAlignment.aboveBaseline})
       : super(name: name, children: null, style: style, node: node);
 
   static List<String> parseMediaSources(List<dom.Element> elements) {
-    return elements
-        .where((element) => element.localName == 'source')
-        .map((element) {
+    return elements.where((element) => element.localName == 'source').map((element) {
       return element.attributes['src'];
     }).toList();
   }
@@ -140,8 +131,7 @@ class ImageContentElement extends ReplacedElement {
       child: RawGestureDetector(
         child: imageWidget,
         gestures: {
-          MultipleTapGestureRecognizer: GestureRecognizerFactoryWithHandlers<
-              MultipleTapGestureRecognizer>(
+          MultipleTapGestureRecognizer: GestureRecognizerFactoryWithHandlers<MultipleTapGestureRecognizer>(
             () => MultipleTapGestureRecognizer(),
             (instance) {
               instance..onTap = () => context.parser.onImageTap?.call(src);
@@ -176,95 +166,7 @@ class IframeContentElement extends ReplacedElement {
       child: WebView(
         initialUrl: src,
         javascriptMode: JavascriptMode.unrestricted,
-        gestureRecognizers: {
-          Factory(() => PlatformViewVerticalGestureRecognizer())
-        },
-      ),
-    );
-  }
-}
-
-/// [AudioContentElement] is a [ContentElement] with an audio file as its content.
-class AudioContentElement extends ReplacedElement {
-  final List<String> src;
-  final bool showControls;
-  final bool autoplay;
-  final bool loop;
-  final bool muted;
-
-  AudioContentElement({
-    String name,
-    Style style,
-    this.src,
-    this.showControls,
-    this.autoplay,
-    this.loop,
-    this.muted,
-    dom.Element node,
-  }) : super(name: name, style: style, node: node);
-
-  @override
-  Widget toWidget(RenderContext context) {
-    return Container(
-      width: context.style.width ?? 300,
-      child: ChewieAudio(
-        controller: ChewieAudioController(
-          videoPlayerController: VideoPlayerController.network(
-            src.first ?? "",
-          ),
-          autoPlay: autoplay,
-          looping: loop,
-          showControls: showControls,
-          autoInitialize: true,
-        ),
-      ),
-    );
-  }
-}
-
-/// [VideoContentElement] is a [ContentElement] with a video file as its content.
-class VideoContentElement extends ReplacedElement {
-  final List<String> src;
-  final String poster;
-  final bool showControls;
-  final bool autoplay;
-  final bool loop;
-  final bool muted;
-  final double width;
-  final double height;
-
-  VideoContentElement({
-    String name,
-    Style style,
-    this.src,
-    this.poster,
-    this.showControls,
-    this.autoplay,
-    this.loop,
-    this.muted,
-    this.width,
-    this.height,
-    dom.Element node,
-  }) : super(name: name, style: style, node: node);
-
-  @override
-  Widget toWidget(RenderContext context) {
-    return Container(
-      width: width ?? (height ?? 150) * 2,
-      height: height ?? (width ?? 300) / 2,
-      child: Chewie(
-        controller: ChewieController(
-          videoPlayerController: VideoPlayerController.network(
-            src.first ?? "",
-          ),
-          placeholder: poster != null
-              ? Image.network(poster)
-              : Container(color: Colors.black),
-          autoPlay: autoplay,
-          looping: loop,
-          showControls: showControls,
-          autoInitialize: true,
-        ),
+        gestureRecognizers: {Factory(() => PlatformViewVerticalGestureRecognizer())},
       ),
     );
   }
@@ -302,8 +204,7 @@ class EmptyContentElement extends ReplacedElement {
 class RubyElement extends ReplacedElement {
   dom.Element element;
 
-  RubyElement({@required this.element, String name = "ruby"})
-      : super(name: name, alignment: PlaceholderAlignment.middle);
+  RubyElement({@required this.element, String name = "ruby"}) : super(name: name, alignment: PlaceholderAlignment.middle);
 
   @override
   Widget toWidget(RenderContext context) {
@@ -325,15 +226,9 @@ class RubyElement extends ReplacedElement {
                   alignment: Alignment.bottomCenter,
                   child: Center(
                       child: Transform(
-                          transform:
-                              Matrix4.translationValues(0, -(rubyYPos), 0),
-                          child: Text(c.innerHtml,
-                              style: context.style
-                                  .generateTextStyle()
-                                  .copyWith(fontSize: rubySize))))),
-              Container(
-                  child: Text(textNode.text.trim(),
-                      style: context.style.generateTextStyle())),
+                          transform: Matrix4.translationValues(0, -(rubyYPos), 0),
+                          child: Text(c.innerHtml, style: context.style.generateTextStyle().copyWith(fontSize: rubySize))))),
+              Container(child: Text(textNode.text.trim(), style: context.style.generateTextStyle())),
             ],
           );
           widgets.add(widget);
@@ -351,20 +246,6 @@ class RubyElement extends ReplacedElement {
 
 ReplacedElement parseReplacedElement(dom.Element element) {
   switch (element.localName) {
-    case "audio":
-      final sources = <String>[
-        if (element.attributes['src'] != null) element.attributes['src'],
-        ...ReplacedElement.parseMediaSources(element.children),
-      ];
-      return AudioContentElement(
-        name: "audio",
-        src: sources,
-        showControls: element.attributes['controls'] != null,
-        loop: element.attributes['loop'] != null,
-        autoplay: element.attributes['autoplay'] != null,
-        muted: element.attributes['muted'] != null,
-        node: element,
-      );
     case "br":
       return TextContentElement(
         text: "\n",
@@ -384,23 +265,6 @@ ReplacedElement parseReplacedElement(dom.Element element) {
         alt: element.attributes['alt'],
         node: element,
       );
-    case "video":
-      final sources = <String>[
-        if (element.attributes['src'] != null) element.attributes['src'],
-        ...ReplacedElement.parseMediaSources(element.children),
-      ];
-      return VideoContentElement(
-        name: "video",
-        src: sources,
-        poster: element.attributes['poster'],
-        showControls: element.attributes['controls'] != null,
-        loop: element.attributes['loop'] != null,
-        autoplay: element.attributes['autoplay'] != null,
-        muted: element.attributes['muted'] != null,
-        width: double.tryParse(element.attributes['width'] ?? ""),
-        height: double.tryParse(element.attributes['height'] ?? ""),
-        node: element,
-      );
     case "svg":
       return SvgContentElement(
         data: element.outerHtml,
@@ -417,10 +281,8 @@ ReplacedElement parseReplacedElement(dom.Element element) {
 }
 
 // TODO(Sub6Resources): Remove when https://github.com/flutter/flutter/issues/36304 is resolved
-class PlatformViewVerticalGestureRecognizer
-    extends VerticalDragGestureRecognizer {
-  PlatformViewVerticalGestureRecognizer({PointerDeviceKind kind})
-      : super(kind: kind);
+class PlatformViewVerticalGestureRecognizer extends VerticalDragGestureRecognizer {
+  PlatformViewVerticalGestureRecognizer({PointerDeviceKind kind}) : super(kind: kind);
 
   Offset _dragDistance = Offset.zero;
 
